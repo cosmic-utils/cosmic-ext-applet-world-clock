@@ -378,7 +378,7 @@ impl cosmic::Application for WorldClock {
             // Each clock is a single horizontal line, so clocks sit side by side.
             let mut clock_row = cosmic::widget::row::with_capacity(3)
                 .align_y(cosmic::iced::Alignment::Center)
-                .spacing(6);
+                .spacing(3);
 
             if !label.is_empty() {
                 let text = self.core.applet.text(label);
