@@ -20,6 +20,20 @@
   </description>
   <icon type="stock">io.github.cosmic-utils.cosmic-ext-applet-world-clock-symbolic.svg</icon>
   <launchable type="desktop-id">io.github.cosmic-utils.cosmic-ext-applet-world-clock.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/cosmic-utils/cosmic-ext-applet-world-clock/main/data/applet_screenshot_1.png</image>
+      <caption>The World Clock applet in the COSMIC panel</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/cosmic-utils/cosmic-ext-applet-world-clock/main/data/applet_screenshot_2.png</image>
+      <caption>Applet configuration view</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/cosmic-utils/cosmic-ext-applet-world-clock/main/data/applet_screenshot_3.png</image>
+      <caption>Searching for a timezone</caption>
+    </screenshot>
+  </screenshots>
   <provides>
     <id>com.system76.CosmicApplet</id>
     <binaries>

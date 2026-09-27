@@ -2,6 +2,18 @@
 
 Shows the current time in as many timezones as you want, right in the COSMIC panel. Click the applet to add, remove, and configure clocks.
 
+<p align="center">
+    <img alt="Applet in panel" src="https://github.com/cosmic-utils/cosmic-ext-applet-world-clock/blob/main/data/applet_screenshot_1.png">
+</p>
+
+<p align="center">
+    <img alt="Applet window view" src="https://github.com/cosmic-utils/cosmic-ext-applet-world-clock/blob/main/data/applet_screenshot_2.png">
+</p>
+
+<p align="center">
+    <img alt="Timezone selector" src="https://github.com/cosmic-utils/cosmic-ext-applet-world-clock/blob/main/data/applet_screenshot_3.png">
+</p>
+
 ## Features
 
 - **Multiple clocks** — any number of clocks, each in its own IANA timezone
