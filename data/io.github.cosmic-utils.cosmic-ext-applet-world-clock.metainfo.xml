@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.cosmic-utils.cosmic-ext-applet-world-clock</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <project_group>COSMIC</project_group>
+  <developer_name>rwxroot</developer_name>
+  <update_contact>rwxroot@proton.me</update_contact>
+  <name>World Clock</name>
+  <url type="homepage">https://github.com/cosmic-utils/cosmic-ext-applet-world-clock</url>
+  <url type="bugtracker">https://github.com/cosmic-utils/cosmic-ext-applet-world-clock/issues</url>
+  <content_rating type="oars-1.1" />
+  <branding>
+    <color type="primary" scheme_preference="light">#fffffe</color>
+    <color type="primary" scheme_preference="dark">#2b2b2b</color>
+  </branding>
+  <summary>Multi-timezone clock applet for the COSMIC panel</summary>
+  <description>
+    <p>Show the current time in any number of timezones directly in the COSMIC panel. Add clocks, label them, and switch between 12/24-hour time with or without seconds and the date.</p>
+  </description>
+  <icon type="stock">io.github.cosmic-utils.cosmic-ext-applet-world-clock-symbolic.svg</icon>
+  <launchable type="desktop-id">io.github.cosmic-utils.cosmic-ext-applet-world-clock.desktop</launchable>
+  <provides>
+    <id>com.system76.CosmicApplet</id>
+    <binaries>
+      <binary>cosmic-ext-applet-world-clock</binary>
+    </binaries>
+  </provides>
+  <categories>
+    <category>Utility</category>
+  </categories>
+</component>

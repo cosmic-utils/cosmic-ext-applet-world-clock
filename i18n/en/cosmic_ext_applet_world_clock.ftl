@@ -1,0 +1,7 @@
+add-clock = Add clock
+search-timezone = Search timezone
+show-seconds = Show seconds
+military-time = 24-hour time
+show-date = Show date
+show-weekday = Show weekday
+label-placeholder = Label (optional)

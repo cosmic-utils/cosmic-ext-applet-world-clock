@@ -1,0 +1,6 @@
+<svg id="Flat" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <circle cx="128" cy="128" r="88" fill="none" stroke="currentColor" stroke-width="16"/>
+  <line x1="128" y1="128" x2="128" y2="72" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+  <line x1="128" y1="128" x2="164" y2="148" stroke="currentColor" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="128" cy="128" r="8" fill="currentColor"/>
+</svg>
