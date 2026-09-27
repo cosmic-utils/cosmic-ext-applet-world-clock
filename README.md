@@ -23,6 +23,7 @@ Shows the current time in as many timezones as you want, right in the COSMIC pan
 - **Seconds** — optionally show seconds
 - **Date** — optionally show today's date next to the time
 - **Weekday** — optionally show the day of the week (with the date)
+- **Clock colors** — tint each clock's text with a preset color or any hex (`#rrggbb`)
 - **Timezone-aware** — every clock shows the correct local time for its zone, including DST transitions
 
 ## Configuration
@@ -45,6 +46,7 @@ show_seconds = false
 military_time = false
 show_date = false
 show_weekday = false
+color = "#42a5f5"
 
 [[clocks]]
 timezone = "America/New_York"
@@ -52,6 +54,7 @@ show_seconds = true
 military_time = true
 show_date = true
 show_weekday = true
+color = null
 ```
 
 ## Installation

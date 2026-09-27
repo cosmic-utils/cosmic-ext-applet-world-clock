@@ -5,3 +5,4 @@ military-time = 24-hour time
 show-date = Show date
 show-weekday = Show weekday
 label-placeholder = Label (optional)
+color-reset = Default

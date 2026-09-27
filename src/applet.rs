@@ -44,6 +44,8 @@ pub(crate) enum Message {
     ToggleMilitary(usize, bool),
     ToggleDate(usize, bool),
     ToggleWeekday(usize, bool),
+    ColorSelected(usize, Option<String>),
+    ColorEdited(usize, String),
 }
 
 impl WorldClock {
@@ -90,6 +92,65 @@ fn toggle_row(
         .push(cosmic::widget::space::horizontal())
         .push(cosmic::widget::toggler(value).on_toggle(on_toggle))
         .into()
+}
+
+/// Hex colors offered as quick-pick swatches. Mid-saturation hues that stay
+/// legible on both light and dark COSMIC themes.
+const PRESET_COLORS: &[&str] = &[
+    "#ef5350", // red
+    "#ff9800", // orange
+    "#fdd835", // yellow
+    "#66bb6a", // green
+    "#26c6da", // cyan
+    "#42a5f5", // blue
+    "#ab47bc", // purple
+    "#ec407a", // pink
+    "#8d9aa5", // gray
+];
+
+/// Parse a hex color (`#rrggbb` or `#rgb`, with or without the `#`) into an
+/// iced color. Returns `None` for anything unparsable so callers can fall
+/// back to the theme default.
+fn parse_color(hex: &str) -> Option<cosmic::iced::Color> {
+    let hex = hex.trim().strip_prefix('#').unwrap_or(hex.trim());
+    let (r, g, b) = match hex.len() {
+        6 => (
+            u8::from_str_radix(&hex[0..2], 16).ok()?,
+            u8::from_str_radix(&hex[2..4], 16).ok()?,
+            u8::from_str_radix(&hex[4..6], 16).ok()?,
+        ),
+        3 => (
+            u8::from_str_radix(&hex[0..1], 16).ok()? * 17,
+            u8::from_str_radix(&hex[1..2], 16).ok()? * 17,
+            u8::from_str_radix(&hex[2..3], 16).ok()? * 17,
+        ),
+        _ => return None,
+    };
+    Some(cosmic::iced::Color::from_rgb8(r, g, b))
+}
+
+/// A small colored square button that selects a preset color.
+fn color_swatch(hex: &str, on_press: Message) -> cosmic::Element<'static, Message> {
+    let color = parse_color(hex).unwrap_or(cosmic::iced::Color::BLACK);
+    let style = cosmic::theme::Container::custom(move |_| cosmic::iced::widget::container::Style {
+        background: Some(cosmic::iced::Background::Color(color)),
+        ..Default::default()
+    });
+
+    cosmic::widget::button::custom(
+        cosmic::widget::container(
+            cosmic::widget::space::Space::new()
+                .width(cosmic::iced::Length::Fill)
+                .height(cosmic::iced::Length::Fill),
+        )
+        .class(style),
+    )
+    .padding(2)
+    .width(cosmic::iced::Length::Fixed(26.0))
+    .height(cosmic::iced::Length::Fixed(26.0))
+    .class(cosmic::theme::Button::Icon)
+    .on_press(on_press)
+    .into()
 }
 
 /// Format `now` in `timezone` according to the 12/24h, seconds, date, and
@@ -285,6 +346,18 @@ impl cosmic::Application for WorldClock {
                     self.persist();
                 }
             }
+            Message::ColorSelected(index, color) => {
+                if let Some(clock) = self.config.clocks.get_mut(index) {
+                    clock.color = color;
+                    self.persist();
+                }
+            }
+            Message::ColorEdited(index, value) => {
+                if let Some(clock) = self.config.clocks.get_mut(index) {
+                    clock.color = (!value.trim().is_empty()).then_some(value);
+                    self.persist();
+                }
+            }
         }
 
         cosmic::task::none()
@@ -298,6 +371,7 @@ impl cosmic::Application for WorldClock {
         for clock in &self.config.clocks {
             let time = self.format_time(clock);
             let label = self.clock_label(clock);
+            let color = clock.color.as_deref().and_then(parse_color);
 
             // Each clock is a single horizontal line, so clocks sit side by side.
             let mut clock_row = cosmic::widget::row::with_capacity(3)
@@ -305,9 +379,17 @@ impl cosmic::Application for WorldClock {
                 .spacing(6);
 
             if !label.is_empty() {
-                clock_row = clock_row.push(self.core.applet.text(label));
+                let text = self.core.applet.text(label);
+                clock_row = clock_row.push(match color {
+                    Some(color) => text.class(cosmic::theme::Text::Color(color)),
+                    None => text,
+                });
             }
-            clock_row = clock_row.push(self.core.applet.text(time));
+            let text = self.core.applet.text(time);
+            clock_row = clock_row.push(match color {
+                Some(color) => text.class(cosmic::theme::Text::Color(color)),
+                None => text,
+            });
 
             row = row.push(clock_row);
         }
@@ -402,6 +484,29 @@ impl cosmic::Application for WorldClock {
                     Message::ToggleDate(index, v)
                 }));
 
+            // Color: preset swatches plus a hex input for arbitrary colors.
+            // Invalid hex (including empty) falls back to the theme default.
+            let mut swatches = cosmic::widget::row::with_capacity(PRESET_COLORS.len())
+                .spacing(4)
+                .align_y(cosmic::iced::Alignment::Center);
+            for preset in PRESET_COLORS {
+                let message = Message::ColorSelected(index, Some((*preset).to_string()));
+                swatches = swatches.push(color_swatch(preset, message));
+            }
+            swatches = swatches.push(
+                cosmic::widget::button::text(fl!("color-reset"))
+                    .on_press(Message::ColorSelected(index, None))
+                    .class(cosmic::theme::Button::Text),
+            );
+
+            let color_input = cosmic::widget::text_input::text_input(
+                "#rrggbb",
+                clock.color.as_deref().unwrap_or(""),
+            )
+            .on_input(move |value| Message::ColorEdited(index, value));
+
+            clock_box = clock_box.push(swatches).push(color_input);
+
             list = list.push(cosmic::applet::padded_control(clock_box));
         }
 
@@ -454,5 +559,34 @@ mod tests {
             .unwrap();
         let time = format_time(&day, "UTC", false, false, true, true);
         assert_eq!(time, "Sun, Sep 27, 12:18 PM");
+    }
+
+    #[test]
+    fn parse_color_handles_six_digit_hex() {
+        let color = parse_color("#ff0000").expect("valid hex");
+        assert_eq!(
+            (color.r, color.g, color.b),
+            (1.0, 0.0, 0.0),
+            "#ff0000 should be pure red"
+        );
+    }
+
+    #[test]
+    fn parse_color_handles_three_digit_shorthand() {
+        let color = parse_color("#fff").expect("valid shorthand");
+        assert_eq!((color.r, color.g, color.b), (1.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn parse_color_accepts_missing_hash_and_whitespace() {
+        assert!(parse_color("00ff00").is_some());
+        assert!(parse_color("  #0f0 ").is_some());
+    }
+
+    #[test]
+    fn parse_color_rejects_garbage() {
+        for bad in ["", "xyz", "#12345", "#1234567", "#gggggg"] {
+            assert_eq!(parse_color(bad), None, "{bad:?} should not parse");
+        }
     }
 }

@@ -21,6 +21,9 @@ pub(crate) struct ClockConfig {
     pub(crate) show_weekday: bool,
     #[serde(default)]
     pub(crate) show_date: bool,
+    /// Optional hex color (`#rrggbb`/`#rgb`) for the clock's text. `None` = theme default.
+    #[serde(default)]
+    pub(crate) color: Option<String>,
 }
 
 #[derive(Debug, Clone, CosmicConfigEntry)]
