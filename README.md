@@ -22,7 +22,7 @@ Shows the current time in as many timezones as you want, right in the COSMIC pan
 - **12/24-hour time** — switch between `3:42 PM` and `15:42`
 - **Seconds** — optionally show seconds
 - **Date** — optionally show today's date next to the time
-- **Weekday** — optionally show the day of the week (with the date)
+- **Weekday** — optionally show the day of the week (e.g. Mon) next to the time
 - **Clock colors** — tint each clock's text with a preset color or any hex (`#rrggbb`)
 - **Timezone-aware** — every clock shows the correct local time for its zone, including DST transitions
 
@@ -33,7 +33,7 @@ The applet ships with a sensible default (one UTC clock) and needs no configurat
 Everything is saved to the standard COSMIC config file:
 
 ```sh
-~/.config/cosmic/io.github.cosmic-utils.cosmic-ext-applet-world-clock/v1/config
+~/.config/cosmic/io.github.cosmic-utils.cosmic-ext-applet-world-clock/v1/clocks
 ```
 
 Example config:

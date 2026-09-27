@@ -175,10 +175,12 @@ fn format_time(
         (false, true) => "%-I:%M:%S %p",
         (false, false) => "%-I:%M %p",
     };
-    // Weekday only shows with the date, matching the system time applet.
+
+    // Weekday shows the day name; date shows the month/day. Independent toggles.
     let date = match (weekday, date) {
         (true, true) => "%a, %b %-d, ",
         (false, true) => "%b %-d, ",
+        (true, false) => "%a, ",
         _ => "",
     };
 
@@ -385,6 +387,7 @@ impl cosmic::Application for WorldClock {
                     None => text,
                 });
             }
+
             let text = self.core.applet.text(time);
             clock_row = clock_row.push(match color {
                 Some(color) => text.class(cosmic::theme::Text::Color(color)),
@@ -559,6 +562,16 @@ mod tests {
             .unwrap();
         let time = format_time(&day, "UTC", false, false, true, true);
         assert_eq!(time, "Sun, Sep 27, 12:18 PM");
+    }
+
+    #[test]
+    fn format_time_weekday_alone_shows_day_name() {
+        // Weekday without date shows just the day name.
+        let day = jiff::civil::datetime(2026, 9, 27, 12, 18, 0, 0)
+            .to_zoned(TimeZone::UTC)
+            .unwrap();
+        let time = format_time(&day, "UTC", false, false, false, true);
+        assert_eq!(time, "Sun, 12:18 PM");
     }
 
     #[test]
