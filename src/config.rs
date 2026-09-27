@@ -7,21 +7,25 @@ const CONFIG_VERSION: u64 = 1;
 
 pub(crate) const APP_ID: &str = "io.github.cosmic-utils.cosmic-ext-applet-world-clock";
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub(crate) struct ClockConfig {
     /// IANA timezone name, e.g. "UTC" or "America/New_York".
     pub(crate) timezone: String,
     /// Optional short label shown next to the time. Falls back to the timezone name.
     pub(crate) label: Option<String>,
+    #[serde(default)]
+    pub(crate) show_seconds: bool,
+    #[serde(default)]
+    pub(crate) military_time: bool,
+    #[serde(default)]
+    pub(crate) show_weekday: bool,
+    #[serde(default)]
+    pub(crate) show_date: bool,
 }
 
 #[derive(Debug, Clone, CosmicConfigEntry)]
 pub(crate) struct WorldClockConfig {
     pub(crate) clocks: Vec<ClockConfig>,
-    pub(crate) show_seconds: bool,
-    pub(crate) military_time: bool,
-    pub(crate) show_weekday: bool,
-    pub(crate) show_date: bool,
 }
 
 impl Default for WorldClockConfig {
@@ -31,12 +35,8 @@ impl Default for WorldClockConfig {
             // It can be removed; the applet also works with zero clocks.
             clocks: vec![ClockConfig {
                 timezone: "UTC".to_string(),
-                label: None,
+                ..ClockConfig::default()
             }],
-            show_seconds: false,
-            military_time: false,
-            show_weekday: false,
-            show_date: false,
         }
     }
 }

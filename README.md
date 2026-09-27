@@ -27,7 +27,7 @@ Shows the current time in as many timezones as you want, right in the COSMIC pan
 
 ## Configuration
 
-The applet ships with a sensible default (one UTC clock) and needs no configuration. Clock set-up happens in the popup, which opens when you click the applet.
+The applet ships with a sensible default (one UTC clock) and needs no configuration. Clock set-up happens in the popup, which opens when you click the applet. Format options (seconds, 24-hour, date, weekday) are set per clock.
 
 Everything is saved to the standard COSMIC config file:
 
@@ -41,14 +41,17 @@ Example config:
 [[clocks]]
 timezone = "Europe/Warsaw"
 label = "Home"
-
-[[clocks]]
-timezone = "America/New_York"
-
 show_seconds = false
 military_time = false
 show_date = false
 show_weekday = false
+
+[[clocks]]
+timezone = "America/New_York"
+show_seconds = true
+military_time = true
+show_date = true
+show_weekday = true
 ```
 
 ## Installation

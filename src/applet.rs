@@ -40,10 +40,10 @@ pub(crate) enum Message {
     LabelEdited(usize, String),
     RemoveClock(usize),
     AddClock,
-    ToggleSeconds(bool),
-    ToggleMilitary(bool),
-    ToggleDate(bool),
-    ToggleWeekday(bool),
+    ToggleSeconds(usize, bool),
+    ToggleMilitary(usize, bool),
+    ToggleDate(usize, bool),
+    ToggleWeekday(usize, bool),
 }
 
 impl WorldClock {
@@ -56,16 +56,16 @@ impl WorldClock {
             .unwrap_or_else(|| clock.timezone.clone())
     }
 
-    /// Format the current time in `timezone`, optionally prefixing the date
-    /// (and weekday) the way the system time applet does (e.g. `Sep 27, 12:18 PM`).
-    fn format_time(&self, timezone: &str) -> String {
+    /// Format the current time in `clock.timezone`, optionally prefixing the
+    /// date (and weekday) the way the system time applet does.
+    fn format_time(&self, clock: &ClockConfig) -> String {
         format_time(
             &self.now,
-            timezone,
-            self.config.military_time,
-            self.config.show_seconds,
-            self.config.show_weekday,
-            self.config.show_date,
+            &clock.timezone,
+            clock.military_time,
+            clock.show_seconds,
+            clock.show_weekday,
+            clock.show_date,
         )
     }
 
@@ -76,6 +76,20 @@ impl WorldClock {
             tracing::error!("failed to persist config: {error}");
         }
     }
+}
+
+/// A labelled toggle row (label on the left, switch on the right), used for
+/// the per-clock format options in the popup.
+fn toggle_row(
+    label: String,
+    value: bool,
+    on_toggle: impl Fn(bool) -> Message + 'static,
+) -> cosmic::Element<'static, Message> {
+    cosmic::widget::row::with_capacity(3)
+        .push(cosmic::widget::text(label))
+        .push(cosmic::widget::space::horizontal())
+        .push(cosmic::widget::toggler(value).on_toggle(on_toggle))
+        .into()
 }
 
 /// Format `now` in `timezone` according to the 12/24h, seconds, date, and
@@ -243,25 +257,33 @@ impl cosmic::Application for WorldClock {
             Message::AddClock => {
                 self.config.clocks.push(ClockConfig {
                     timezone: String::new(),
-                    label: None,
+                    ..ClockConfig::default()
                 });
                 self.persist();
             }
-            Message::ToggleSeconds(value) => {
-                self.config.show_seconds = value;
-                self.persist();
+            Message::ToggleSeconds(index, value) => {
+                if let Some(clock) = self.config.clocks.get_mut(index) {
+                    clock.show_seconds = value;
+                    self.persist();
+                }
             }
-            Message::ToggleMilitary(value) => {
-                self.config.military_time = value;
-                self.persist();
+            Message::ToggleMilitary(index, value) => {
+                if let Some(clock) = self.config.clocks.get_mut(index) {
+                    clock.military_time = value;
+                    self.persist();
+                }
             }
-            Message::ToggleWeekday(value) => {
-                self.config.show_weekday = value;
-                self.persist();
+            Message::ToggleWeekday(index, value) => {
+                if let Some(clock) = self.config.clocks.get_mut(index) {
+                    clock.show_weekday = value;
+                    self.persist();
+                }
             }
-            Message::ToggleDate(value) => {
-                self.config.show_date = value;
-                self.persist();
+            Message::ToggleDate(index, value) => {
+                if let Some(clock) = self.config.clocks.get_mut(index) {
+                    clock.show_date = value;
+                    self.persist();
+                }
             }
         }
 
@@ -274,7 +296,7 @@ impl cosmic::Application for WorldClock {
             .spacing(8);
 
         for clock in &self.config.clocks {
-            let time = self.format_time(&clock.timezone);
+            let time = self.format_time(clock);
             let label = self.clock_label(clock);
 
             // Each clock is a single horizontal line, so clocks sit side by side.
@@ -359,6 +381,27 @@ impl cosmic::Application for WorldClock {
                 clock_box = clock_box.push(match_list);
             }
 
+            // Per-clock format options: seconds, 24h, weekday, date.
+            clock_box = clock_box
+                .push(toggle_row(
+                    fl!("show-seconds"),
+                    clock.show_seconds,
+                    move |v| Message::ToggleSeconds(index, v),
+                ))
+                .push(toggle_row(
+                    fl!("military-time"),
+                    clock.military_time,
+                    move |v| Message::ToggleMilitary(index, v),
+                ))
+                .push(toggle_row(
+                    fl!("show-weekday"),
+                    clock.show_weekday,
+                    move |v| Message::ToggleWeekday(index, v),
+                ))
+                .push(toggle_row(fl!("show-date"), clock.show_date, move |v| {
+                    Message::ToggleDate(index, v)
+                }));
+
             list = list.push(cosmic::applet::padded_control(clock_box));
         }
 
@@ -366,39 +409,7 @@ impl cosmic::Application for WorldClock {
             .on_press(Message::AddClock)
             .class(cosmic::theme::Button::Standard);
 
-        let seconds_toggler = cosmic::widget::row::with_capacity(3)
-            .push(cosmic::widget::text(fl!("show-seconds")))
-            .push(cosmic::widget::space::horizontal())
-            .push(
-                cosmic::widget::toggler(self.config.show_seconds).on_toggle(Message::ToggleSeconds),
-            );
-
-        let military_toggler = cosmic::widget::row::with_capacity(3)
-            .push(cosmic::widget::text(fl!("military-time")))
-            .push(cosmic::widget::space::horizontal())
-            .push(
-                cosmic::widget::toggler(self.config.military_time)
-                    .on_toggle(Message::ToggleMilitary),
-            );
-
-        let weekday_toggler = cosmic::widget::row::with_capacity(3)
-            .push(cosmic::widget::text(fl!("show-weekday")))
-            .push(cosmic::widget::space::horizontal())
-            .push(
-                cosmic::widget::toggler(self.config.show_weekday).on_toggle(Message::ToggleWeekday),
-            );
-
-        let date_toggler = cosmic::widget::row::with_capacity(3)
-            .push(cosmic::widget::text(fl!("show-date")))
-            .push(cosmic::widget::space::horizontal())
-            .push(cosmic::widget::toggler(self.config.show_date).on_toggle(Message::ToggleDate));
-
-        list = list
-            .push(cosmic::applet::padded_control(add_button))
-            .push(cosmic::applet::padded_control(seconds_toggler))
-            .push(cosmic::applet::padded_control(military_toggler))
-            .push(cosmic::applet::padded_control(weekday_toggler))
-            .push(cosmic::applet::padded_control(date_toggler));
+        list = list.push(cosmic::applet::padded_control(add_button));
 
         self.core
             .applet
