@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.cosmic-utils.cosmic-ext-applet-world-clock</id>
+  <id>io.github.cosmic_utils.cosmic-ext-applet-world-clock</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
   <project_group>COSMIC</project_group>
@@ -18,8 +18,8 @@
   <description>
     <p>Show the current time in any number of timezones directly in the COSMIC panel. Add clocks, label them, and switch between 12/24-hour time with or without seconds and the date.</p>
   </description>
-  <icon type="stock">io.github.cosmic-utils.cosmic-ext-applet-world-clock-symbolic.svg</icon>
-  <launchable type="desktop-id">io.github.cosmic-utils.cosmic-ext-applet-world-clock.desktop</launchable>
+  <icon type="stock">io.github.cosmic_utils.cosmic-ext-applet-world-clock-symbolic.svg</icon>
+  <launchable type="desktop-id">io.github.cosmic_utils.cosmic-ext-applet-world-clock.desktop</launchable>
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/cosmic-utils/cosmic-ext-applet-world-clock/main/data/applet_screenshot_1.png</image>

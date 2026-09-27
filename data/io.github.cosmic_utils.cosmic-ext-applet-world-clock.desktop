@@ -4,7 +4,7 @@ Keywords=Clock;Time;Timezone;
 Categories=Utility;
 
 Type=Application
-Icon=io.github.cosmic-utils.cosmic-ext-applet-world-clock-symbolic
+Icon=io.github.cosmic_utils.cosmic-ext-applet-world-clock-symbolic
 Exec=cosmic-ext-applet-world-clock
 Terminal=false
 StartupNotify=true

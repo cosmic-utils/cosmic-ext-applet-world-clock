@@ -1,5 +1,5 @@
 {
-  "id": "io.github.cosmic-utils.cosmic-ext-applet-world-clock",
+  "id": "io.github.cosmic_utils.cosmic-ext-applet-world-clock",
   "runtime": "org.freedesktop.Platform",
   "runtime-version": "25.08",
   "sdk": "org.freedesktop.Sdk",
@@ -28,9 +28,9 @@
         "cargo --offline fetch --manifest-path Cargo.toml --verbose",
         "cargo --offline build --release --verbose",
         "install -Dm0755 ./target/release/cosmic-ext-applet-world-clock /app/bin/cosmic-ext-applet-world-clock",
-        "install -Dm0644 ./data/io.github.cosmic-utils.cosmic-ext-applet-world-clock.desktop -t /app/share/applications/",
-        "install -Dm0644 ./data/io.github.cosmic-utils.cosmic-ext-applet-world-clock.metainfo.xml -t /app/share/metainfo/",
-        "install -Dm0644 ./data/io.github.cosmic-utils.cosmic-ext-applet-world-clock-symbolic.svg -t /app/share/icons/hicolor/scalable/apps/"
+        "install -Dm0644 ./data/io.github.cosmic_utils.cosmic-ext-applet-world-clock.desktop -t /app/share/applications/",
+        "install -Dm0644 ./data/io.github.cosmic_utils.cosmic-ext-applet-world-clock.metainfo.xml -t /app/share/metainfo/",
+        "install -Dm0644 ./data/io.github.cosmic_utils.cosmic-ext-applet-world-clock-symbolic.svg -t /app/share/icons/hicolor/scalable/apps/"
       ],
       "sources": [
         {

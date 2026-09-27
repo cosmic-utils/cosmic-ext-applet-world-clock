@@ -33,7 +33,7 @@ The applet ships with a sensible default (one UTC clock) and needs no configurat
 Everything is saved to the standard COSMIC config file:
 
 ```sh
-~/.config/cosmic/io.github.cosmic-utils.cosmic-ext-applet-world-clock/v1/clocks
+~/.config/cosmic/io.github.cosmic_utils.cosmic-ext-applet-world-clock/v1/clocks
 ```
 
 Example config:

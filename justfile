@@ -4,7 +4,7 @@ build:
 	cargo build --release
 
 export NAME := 'cosmic-ext-applet-world-clock'
-export APPID := 'io.github.cosmic-utils.cosmic-ext-applet-world-clock'
+export APPID := 'io.github.cosmic_utils.cosmic-ext-applet-world-clock'
 
 cargo-target-dir := env('CARGO_TARGET_DIR', 'target')
 bin-src := cargo-target-dir / 'release' / NAME
