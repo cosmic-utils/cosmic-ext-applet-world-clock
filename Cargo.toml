@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2024"
 license = "GPL-3.0"
 authors = ["rwxroot <rwxroot@proton.me>"]
+homepage = "https://github.com/cosmic-utils/cosmic-ext-applet-world-clock/"
+repository = "https://github.com/cosmic-utils/cosmic-ext-applet-world-clock.git"
+
+[profile.release]
+lto = "fat"
 
 [dependencies]
 i18n-embed = { version = "0.16.0", default-features = false, features = [
