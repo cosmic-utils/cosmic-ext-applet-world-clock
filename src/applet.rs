@@ -1,7 +1,11 @@
 use std::{sync::LazyLock, time::Duration};
 
-use cosmic::cosmic_config::CosmicConfigEntry;
-use jiff::{Zoned, tz::TimeZone};
+use cosmic::{Apply, cosmic_config::CosmicConfigEntry};
+use jiff::{
+    ToSpan, Zoned,
+    civil::{Date, Weekday},
+    tz::TimeZone,
+};
 use tracing::{debug, trace};
 
 use crate::{
@@ -28,6 +32,8 @@ struct WorldClock {
     config: WorldClockConfig,
     config_handler: Option<cosmic::cosmic_config::Config>,
     now: Zoned,
+    date_today: Date,
+    date_selected: Date,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +52,45 @@ pub(crate) enum Message {
     ToggleWeekday(usize, bool),
     ColorSelected(usize, Option<String>),
     ColorEdited(usize, String),
+    ToggleCalendar(bool),
+    SelectDay(Date),
+    PreviousMonth,
+    NextMonth,
+}
+
+fn get_calendar_first(year: i16, month: i8, first_day_of_week: Weekday) -> Date {
+    let date = Date::new(year, month, 1).expect("valid date");
+    let num_days = date.weekday().since(first_day_of_week);
+    date.checked_sub(num_days.days()).expect("valid date")
+}
+
+fn date_button(
+    date: Date,
+    is_month: bool,
+    is_day: bool,
+    is_today: bool,
+) -> cosmic::Element<'static, Message> {
+    let button = cosmic::widget::button::custom(
+        cosmic::widget::text(format!("{}", date.day()))
+            .apply(cosmic::widget::container)
+            .center(cosmic::iced::Length::Fill),
+    )
+    .class(if is_day {
+        cosmic::theme::Button::Suggested
+    } else if is_today {
+        cosmic::theme::Button::Standard
+    } else {
+        cosmic::theme::Button::Text
+    })
+    .width(cosmic::iced::Length::Fixed(44.0))
+    .height(cosmic::iced::Length::Fixed(44.0));
+
+    // Only in-month days are selectable, like the system time applet.
+    if is_month {
+        button.on_press(Message::SelectDay(date)).into()
+    } else {
+        button.into()
+    }
 }
 
 impl WorldClock {
@@ -78,10 +123,53 @@ impl WorldClock {
             tracing::error!("failed to persist config: {error}");
         }
     }
+
+    fn calendar_grid(&self) -> cosmic::Element<'_, Message> {
+        let mut calendar = cosmic::widget::grid().width(cosmic::iced::Length::Fill);
+
+        let first_day = get_calendar_first(
+            self.date_selected.year(),
+            self.date_selected.month(),
+            Weekday::Sunday,
+        );
+
+        for i in 0..7 {
+            let date = first_day
+                .checked_add(i.days())
+                .expect("valid date in calendar range");
+            let label = date.strftime("%a").to_string();
+            calendar = calendar.push(
+                cosmic::widget::text::caption(label)
+                    .apply(cosmic::widget::container)
+                    .center_x(cosmic::iced::Length::Fixed(44.0)),
+            );
+        }
+
+        calendar = calendar.insert_row();
+
+        for i in 0..42 {
+            if i > 0 && i % 7 == 0 {
+                calendar = calendar.insert_row();
+            }
+
+            let date = first_day
+                .checked_add(i.days())
+                .expect("valid date in calendar range");
+
+            calendar = calendar.push(date_button(
+                date,
+                date.first_of_month() == self.date_selected.first_of_month(),
+                date == self.date_selected,
+                date == self.date_today,
+            ));
+        }
+
+        calendar.into()
+    }
 }
 
 /// A labelled toggle row (label on the left, switch on the right), used for
-/// the per-clock format options in the popup.
+/// the format options and calendar toggle in the popup.
 fn toggle_row(
     label: String,
     value: bool,
@@ -94,7 +182,7 @@ fn toggle_row(
         .into()
 }
 
-/// Hex colors offered as quick-pick swatches. Mid-saturation hues that stay
+/// Hex colours offered as quick-pick swatches. Mid-saturation hues that stay
 /// legible on both light and dark COSMIC themes.
 const PRESET_COLORS: &[&str] = &[
     "#ef5350", // red
@@ -108,11 +196,12 @@ const PRESET_COLORS: &[&str] = &[
     "#8d9aa5", // gray
 ];
 
-/// Parse a hex color (`#rrggbb` or `#rgb`, with or without the `#`) into an
-/// iced color. Returns `None` for anything unparsable so callers can fall
+/// Parse a hex colour (`#rrggbb` or `#rgb`, with or without the `#`) into an
+/// iced colour. Returns `None` for anything unparsable so callers can fall
 /// back to the theme default.
 fn parse_color(hex: &str) -> Option<cosmic::iced::Color> {
     let hex = hex.trim().strip_prefix('#').unwrap_or(hex.trim());
+
     let (r, g, b) = match hex.len() {
         6 => (
             u8::from_str_radix(&hex[0..2], 16).ok()?,
@@ -126,10 +215,11 @@ fn parse_color(hex: &str) -> Option<cosmic::iced::Color> {
         ),
         _ => return None,
     };
+
     Some(cosmic::iced::Color::from_rgb8(r, g, b))
 }
 
-/// A small colored square button that selects a preset color.
+/// Small coloured square button that selects a preset colour.
 fn color_swatch(hex: &str, on_press: Message) -> cosmic::Element<'static, Message> {
     let color = parse_color(hex).unwrap_or(cosmic::iced::Color::BLACK);
     let style = cosmic::theme::Container::custom(move |_| cosmic::iced::widget::container::Style {
@@ -198,13 +288,17 @@ impl cosmic::Application for WorldClock {
         core: cosmic::app::Core,
         flags: Self::Flags,
     ) -> (Self, cosmic::app::Task<Self::Message>) {
+        let now = Zoned::now();
+
         (
             Self {
                 core,
                 popup: None,
                 config: flags.config,
                 config_handler: flags.config_handler,
-                now: Zoned::now(),
+                now: now.clone(),
+                date_today: now.date(),
+                date_selected: now.date(),
                 size: cosmic::iced::Size {
                     width: 10.,
                     height: 10.,
@@ -257,6 +351,7 @@ impl cosmic::Application for WorldClock {
         match message {
             Message::Tick => {
                 self.now = Zoned::now();
+                self.date_today = self.now.date();
             }
             Message::Size(size) => {
                 self.size = size;
@@ -270,6 +365,10 @@ impl cosmic::Application for WorldClock {
 
                 let new_id = cosmic::iced::window::Id::unique();
                 self.popup.replace(new_id);
+
+                // Open the calendar on today, like the system time applet.
+                self.date_today = self.now.date();
+                self.date_selected = self.date_today;
 
                 let mut popup_settings = self.core.applet.get_popup_settings(
                     self.core
@@ -360,6 +459,23 @@ impl cosmic::Application for WorldClock {
                     self.persist();
                 }
             }
+            Message::ToggleCalendar(value) => {
+                self.config.show_calendar = value;
+                self.persist();
+            }
+            Message::SelectDay(date) => {
+                self.date_selected = date;
+            }
+            Message::PreviousMonth => {
+                if let Ok(date) = self.date_selected.checked_sub(1.month()) {
+                    self.date_selected = date;
+                }
+            }
+            Message::NextMonth => {
+                if let Ok(date) = self.date_selected.checked_add(1.month()) {
+                    self.date_selected = date;
+                }
+            }
         }
 
         cosmic::task::none()
@@ -405,119 +521,166 @@ impl cosmic::Application for WorldClock {
     }
 
     fn view_window(&self, _id: cosmic::iced::window::Id) -> cosmic::Element<'_, Message> {
-        let mut list = cosmic::widget::column::with_capacity(self.config.clocks.len() + 4)
+        let mut list = cosmic::widget::column::with_capacity(self.config.clocks.len() + 5)
             .spacing(8)
             .padding([0, 16]);
 
-        for (index, clock) in self.config.clocks.iter().enumerate() {
-            let query = clock.timezone.clone();
-            let query_lower = query.to_lowercase();
-            let matches = if TIMEZONES.iter().any(|tz| tz == &query) {
-                Vec::new()
-            } else {
-                TIMEZONES
-                    .iter()
-                    .filter(|tz| tz.to_lowercase().contains(&query_lower))
-                    .take(8)
-                    .collect()
-            };
+        // The toggle stays visible so the calendar can be turned back off;
+        // everything else hides while it's on.
+        list = list.push(cosmic::applet::padded_control(toggle_row(
+            fl!("show-calendar"),
+            self.config.show_calendar,
+            Message::ToggleCalendar,
+        )));
 
-            let timezone_input =
-                cosmic::widget::text_input::text_input(fl!("search-timezone"), &clock.timezone)
-                    .on_input(move |value| Message::TimezoneEdited(index, value));
+        if self.config.show_calendar {
+            let date_header = cosmic::widget::column::with_capacity(2)
+                .push(
+                    cosmic::widget::text(self.date_selected.strftime("%B %-d, %Y").to_string())
+                        .size(18),
+                )
+                .push(cosmic::widget::text::body(
+                    self.date_selected.strftime("%A").to_string(),
+                ));
 
-            let placeholder = fl!("label-placeholder");
-            let label_value = self.clock_label(clock);
-
-            let label_input =
-                cosmic::widget::text_input::text_input(placeholder, label_value.clone())
-                    .on_input(move |value| Message::LabelEdited(index, value));
-
-            let remove = cosmic::widget::button::icon(cosmic::widget::icon::from_name(
-                "edit-delete-symbolic",
-            ))
-            .on_press(Message::RemoveClock(index))
-            .class(cosmic::theme::Button::Destructive);
-
-            let top_row = cosmic::widget::row::with_capacity(3)
-                .push(timezone_input)
-                .push(label_input)
-                .push(remove)
+            let month_controls = cosmic::widget::row::with_capacity(2)
+                .push(
+                    cosmic::widget::button::icon(cosmic::widget::icon::from_name(
+                        "go-previous-symbolic",
+                    ))
+                    .padding(8)
+                    .on_press(Message::PreviousMonth),
+                )
+                .push(
+                    cosmic::widget::button::icon(cosmic::widget::icon::from_name(
+                        "go-next-symbolic",
+                    ))
+                    .padding(8)
+                    .on_press(Message::NextMonth),
+                )
                 .spacing(8);
 
-            // Each clock occupies a full-width column so long timezone names aren't cut off.
-            let mut clock_box = cosmic::widget::column::with_capacity(2)
-                .push(top_row)
-                .spacing(4);
+            list = list
+                .push(
+                    cosmic::widget::row::with_capacity(3)
+                        .push(date_header)
+                        .push(cosmic::widget::space::horizontal())
+                        .push(month_controls)
+                        .align_y(cosmic::iced::Alignment::Center)
+                        .padding([12, 4]),
+                )
+                .push(cosmic::applet::padded_control(self.calendar_grid()));
+        } else {
+            for (index, clock) in self.config.clocks.iter().enumerate() {
+                let query = clock.timezone.clone();
+                let query_lower = query.to_lowercase();
+                let matches = if TIMEZONES.iter().any(|tz| tz == &query) {
+                    Vec::new()
+                } else {
+                    TIMEZONES
+                        .iter()
+                        .filter(|tz| tz.to_lowercase().contains(&query_lower))
+                        .take(8)
+                        .collect()
+                };
 
-            if !matches.is_empty() {
-                let mut match_list =
-                    cosmic::widget::column::with_capacity(matches.len()).spacing(2);
+                let timezone_input =
+                    cosmic::widget::text_input::text_input(fl!("search-timezone"), &clock.timezone)
+                        .on_input(move |value| Message::TimezoneEdited(index, value));
 
-                for tz in matches {
-                    match_list = match_list.push(
-                        cosmic::widget::button::text(tz.clone())
-                            .on_press(Message::TimezoneEdited(index, tz.clone()))
-                            .class(cosmic::theme::Button::Text)
-                            .width(cosmic::iced::Length::Fill),
-                    );
+                let placeholder = fl!("label-placeholder");
+                let label_value = self.clock_label(clock);
+
+                let label_input =
+                    cosmic::widget::text_input::text_input(placeholder, label_value.clone())
+                        .on_input(move |value| Message::LabelEdited(index, value));
+
+                let remove = cosmic::widget::button::icon(cosmic::widget::icon::from_name(
+                    "edit-delete-symbolic",
+                ))
+                .on_press(Message::RemoveClock(index))
+                .class(cosmic::theme::Button::Destructive);
+
+                let top_row = cosmic::widget::row::with_capacity(3)
+                    .push(timezone_input)
+                    .push(label_input)
+                    .push(remove)
+                    .spacing(8);
+
+                // Each clock occupies a full-width column so long timezone names aren't cut off.
+                let mut clock_box = cosmic::widget::column::with_capacity(2)
+                    .push(top_row)
+                    .spacing(4);
+
+                if !matches.is_empty() {
+                    let mut match_list =
+                        cosmic::widget::column::with_capacity(matches.len()).spacing(2);
+
+                    for tz in matches {
+                        match_list = match_list.push(
+                            cosmic::widget::button::text(tz.clone())
+                                .on_press(Message::TimezoneEdited(index, tz.clone()))
+                                .class(cosmic::theme::Button::Text)
+                                .width(cosmic::iced::Length::Fill),
+                        );
+                    }
+
+                    clock_box = clock_box.push(match_list);
                 }
 
-                clock_box = clock_box.push(match_list);
+                // Per-clock format options: seconds, 24h, weekday, date.
+                clock_box = clock_box
+                    .push(toggle_row(
+                        fl!("show-seconds"),
+                        clock.show_seconds,
+                        move |v| Message::ToggleSeconds(index, v),
+                    ))
+                    .push(toggle_row(
+                        fl!("military-time"),
+                        clock.military_time,
+                        move |v| Message::ToggleMilitary(index, v),
+                    ))
+                    .push(toggle_row(
+                        fl!("show-weekday"),
+                        clock.show_weekday,
+                        move |v| Message::ToggleWeekday(index, v),
+                    ))
+                    .push(toggle_row(fl!("show-date"), clock.show_date, move |v| {
+                        Message::ToggleDate(index, v)
+                    }));
+
+                // Colour: preset swatches plus a hex input for arbitrary colours.
+                // Invalid hex (including empty) falls back to the theme default.
+                let mut swatches = cosmic::widget::row::with_capacity(PRESET_COLORS.len())
+                    .spacing(4)
+                    .align_y(cosmic::iced::Alignment::Center);
+                for preset in PRESET_COLORS {
+                    let message = Message::ColorSelected(index, Some((*preset).to_string()));
+                    swatches = swatches.push(color_swatch(preset, message));
+                }
+                swatches = swatches.push(
+                    cosmic::widget::button::text(fl!("color-reset"))
+                        .on_press(Message::ColorSelected(index, None))
+                        .class(cosmic::theme::Button::Text),
+                );
+
+                let color_input = cosmic::widget::text_input::text_input(
+                    "#rrggbb",
+                    clock.color.as_deref().unwrap_or(""),
+                )
+                .on_input(move |value| Message::ColorEdited(index, value));
+
+                clock_box = clock_box.push(swatches).push(color_input);
+
+                list = list.push(cosmic::applet::padded_control(clock_box));
             }
 
-            // Per-clock format options: seconds, 24h, weekday, date.
-            clock_box = clock_box
-                .push(toggle_row(
-                    fl!("show-seconds"),
-                    clock.show_seconds,
-                    move |v| Message::ToggleSeconds(index, v),
-                ))
-                .push(toggle_row(
-                    fl!("military-time"),
-                    clock.military_time,
-                    move |v| Message::ToggleMilitary(index, v),
-                ))
-                .push(toggle_row(
-                    fl!("show-weekday"),
-                    clock.show_weekday,
-                    move |v| Message::ToggleWeekday(index, v),
-                ))
-                .push(toggle_row(fl!("show-date"), clock.show_date, move |v| {
-                    Message::ToggleDate(index, v)
-                }));
+            let add_button = cosmic::widget::button::text(fl!("add-clock"))
+                .on_press(Message::AddClock)
+                .class(cosmic::theme::Button::Standard);
 
-            // Color: preset swatches plus a hex input for arbitrary colors.
-            // Invalid hex (including empty) falls back to the theme default.
-            let mut swatches = cosmic::widget::row::with_capacity(PRESET_COLORS.len())
-                .spacing(4)
-                .align_y(cosmic::iced::Alignment::Center);
-            for preset in PRESET_COLORS {
-                let message = Message::ColorSelected(index, Some((*preset).to_string()));
-                swatches = swatches.push(color_swatch(preset, message));
-            }
-            swatches = swatches.push(
-                cosmic::widget::button::text(fl!("color-reset"))
-                    .on_press(Message::ColorSelected(index, None))
-                    .class(cosmic::theme::Button::Text),
-            );
-
-            let color_input = cosmic::widget::text_input::text_input(
-                "#rrggbb",
-                clock.color.as_deref().unwrap_or(""),
-            )
-            .on_input(move |value| Message::ColorEdited(index, value));
-
-            clock_box = clock_box.push(swatches).push(color_input);
-
-            list = list.push(cosmic::applet::padded_control(clock_box));
+            list = list.push(cosmic::applet::padded_control(add_button));
         }
-
-        let add_button = cosmic::widget::button::text(fl!("add-clock"))
-            .on_press(Message::AddClock)
-            .class(cosmic::theme::Button::Standard);
-
-        list = list.push(cosmic::applet::padded_control(add_button));
 
         self.core
             .applet
@@ -572,6 +735,13 @@ mod tests {
             .unwrap();
         let time = format_time(&day, "UTC", false, false, false, true);
         assert_eq!(time, "Sun, 12:18 PM");
+    }
+
+    #[test]
+    fn get_calendar_first_is_sunday_aligned() {
+        // Jan 1 2026 is a Thursday → the grid starts with Dec 28 2025 (Sunday).
+        let first = get_calendar_first(2026, 1, Weekday::Sunday);
+        assert_eq!(first.to_string(), "2025-12-28");
     }
 
     #[test]

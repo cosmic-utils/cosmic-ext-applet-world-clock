@@ -21,7 +21,7 @@ pub(crate) struct ClockConfig {
     pub(crate) show_weekday: bool,
     #[serde(default)]
     pub(crate) show_date: bool,
-    /// Optional hex color (`#rrggbb`/`#rgb`) for the clock's text. `None` = theme default.
+    /// Optional hex colour (`#rrggbb`/`#rgb`) for the clock's text. `None` = theme default.
     #[serde(default)]
     pub(crate) color: Option<String>,
 }
@@ -29,6 +29,8 @@ pub(crate) struct ClockConfig {
 #[derive(Debug, Clone, CosmicConfigEntry)]
 pub(crate) struct WorldClockConfig {
     pub(crate) clocks: Vec<ClockConfig>,
+    /// Show a month calendar (like the system time applet's) in the popup.
+    pub(crate) show_calendar: bool,
 }
 
 impl Default for WorldClockConfig {
@@ -36,6 +38,7 @@ impl Default for WorldClockConfig {
         Self {
             // Default: one UTC clock, labelled with its timezone name.
             // It can be removed; the applet also works with zero clocks.
+            show_calendar: false,
             clocks: vec![ClockConfig {
                 timezone: "UTC".to_string(),
                 ..ClockConfig::default()

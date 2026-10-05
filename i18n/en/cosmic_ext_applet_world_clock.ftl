@@ -6,3 +6,4 @@ show-date = Show date
 show-weekday = Show weekday
 label-placeholder = Label (optional)
 color-reset = Default
+show-calendar = Show calendar
