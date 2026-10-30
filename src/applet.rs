@@ -111,8 +111,8 @@ impl WorldClock {
             &clock.timezone,
             clock.military_time,
             clock.show_seconds,
-            clock.show_weekday,
             clock.show_date,
+            clock.show_weekday,
         )
     }
 
